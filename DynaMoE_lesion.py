@@ -328,6 +328,7 @@ class the_network():
 					self.dnet_gradient_loss = tf.gradients(dnet_Total_loss,dnet_local_vars)
 					dnet_grads_to_apply = self.dnet_gradient_loss
 					dnet_global_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, 'central_network/dnet')
+					# trainer就是下面的TRAINER，一个Adam的optimizer。注意这里是更新到central_network中！而不是自己的network！！！
 					self.dnet_apply_gradients = trainer.apply_gradients(zip(dnet_grads_to_apply,dnet_global_vars))
 					self.gv = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, 'central_network')
 
@@ -414,14 +415,14 @@ class worker():
 			feed_dict = {self.working_copy_network.inputs:stacked_states,
 				self.working_copy_network.dnet_state_in[0]:self.dnet_train_rnn_state[0],
 				self.working_copy_network.dnet_state_in[1]:self.dnet_train_rnn_state[1],
-				self.working_copy_network.dnet_D:stacked_decision,
-				self.working_copy_network.dnet_R:stacked_reward}
+				self.working_copy_network.dnet_D:stacked_decision,  # 训练数据
+				self.working_copy_network.dnet_R:stacked_reward}  # 训练数据
 			self.dnet_train_rnn_state, gv, _ = sess.run([self.working_copy_network.dnet_state_out,
 				self.working_copy_network.gv,
-				self.working_copy_network.dnet_apply_gradients],
+				self.working_copy_network.dnet_apply_gradients],  # 这个操作虽然是copy network定义的，但是更新的是central network
 				feed_dict=feed_dict)
 
-			sess.run(resetzero_network_vars('central_network','central_network'))
+			sess.run(resetzero_network_vars('central_network','central_network'))  # 用于leision的，全局变量控制leision区域，正常没有leision
 
 		elif TO_TRAIN=='DNETAllExpert':
 			coded_decision = [np.argmax(item) for item in stacked_decision] #0,1,2 for n1, n2, n3
