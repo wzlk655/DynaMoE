@@ -309,11 +309,11 @@ class the_network():
 					biases_initializer=None)
 
 				if name != 'central_network':
-					self.dnet_D = tf.placeholder(shape=[None,3],dtype=tf.float32)
-					self.dnet_R = tf.placeholder(shape=[None,1],dtype=tf.float32)
-					dnet_selection_from_policy = tf.reduce_sum(self.dnet_policy_layer_output * self.dnet_D, [1])
+					self.dnet_D = tf.placeholder(shape=[None,3],dtype=tf.float32)  # 对应的是one-hot的表示选择哪个export
+					self.dnet_R = tf.placeholder(shape=[None,1],dtype=tf.float32)  # 对应的应该是估计的reward
+					dnet_selection_from_policy = tf.reduce_sum(self.dnet_policy_layer_output * self.dnet_D, [1])  # dnet_D是one-hot的
 					dnet_sfp = tf.reshape(dnet_selection_from_policy,[-1,1])
-					dnet_advantage = self.dnet_R - self.dnet_value_layer_output
+					dnet_advantage = self.dnet_R - self.dnet_value_layer_output  # 估计的reward和实际的差值
 					dnet_Policy_loss = - tf.log(dnet_sfp + 1e-10) * tf.stop_gradient(dnet_advantage)
 					dnet_Value_loss = tf.square(dnet_advantage)
 					dnet_Entropy_loss = - tf.reduce_sum(self.dnet_policy_layer_output * tf.log(self.dnet_policy_layer_output + 1e-10))
@@ -942,6 +942,8 @@ class worker():
 							dnet_policy_rec[0][2] = 0 #if not using n3, don't let choose n3
 
 						#decide which expert network to use based on dnet's policy_rec
+						# 用于训练的对应dnet输出的策略的数据，可以看到是和现有网络的专家数量一致长度的one-hot编码，表明dnet的输出也是一个和专家网络数量一致长度的向量：312行self.dnet_D
+						# 其获得采用dnet_policy_rec中数值最大的的index为1
 						d_cur = worker_choose_action(dnet_policy_rec) #d_cur is the 1-hot action vector that is the length of the number of expert networks
 						a_cur = worker_decide(d_cur,pr_list) #choses which policy to use and then uses that policy to select action
 						r_cur, s_new, ep_term, correct_ind, action_t = worker_act(self.env,s_cur,a_cur)
